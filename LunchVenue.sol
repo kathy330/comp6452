@@ -75,7 +75,7 @@ contract LunchVenue {
      */
     function doVote(uint restaurant) public votingOpen returns (bool validVote) {
         validVote = false; // is the vote valid?
-        if(bytes(friends[msg.sender].name).length != 0) { // does friend exist?
+        if(bytes(friends[msg.sender].name).length != 0 && friends[msg.sender].voted != true) { // does friend exist?
             if(bytes(restaurants[restaurant]).length != 0) { // does restaurant exist?
                 validVote = true;
                 friends[msg.sender].voted = true;
@@ -92,8 +92,7 @@ contract LunchVenue {
         } 
         return validVote;
     }
-
-    /**
+    /**d
      * @notice Determine winner resturant
      * @dev if top 2 restaurant have the same no of votes, result depends on vote order
      */
