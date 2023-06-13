@@ -28,6 +28,9 @@ contract LunchVenue {
     mapping (uint => Vote) public votes; // list of votes (vote no, Vote)
     mapping (uint => uint) private _results; // list of vote count (restaurant no, no of votes)
     bool public voteOpen = true;
+    // new variables
+    mapping (string => bool) public restaurantExists; //  check the restaurants have added or not
+    bool public contractEnable = true; // Flag the contract current status (enable/disable)
     
     /**
      * @dev Set manager when contract starts
@@ -44,8 +47,11 @@ contract LunchVenue {
      * @return Number of restaurant added so far
      */
     function addRestaurant ( string memory name ) public restricted returns ( uint ){
+        require(contractEnable, "Contract is disabled/cancelled");
+        require(!restaurantExists[name], "Cannot add the same restaurant twice");
         numRestaurants++;
         restaurants[numRestaurants] = name;
+        restaurantExists[name] = true;
         return numRestaurants;
     }
 
@@ -58,6 +64,8 @@ contract LunchVenue {
      * @return Number of friends added so far
      */
     function addFriend(address friendAddress, string memory name) public restricted returns (uint) {
+        require(contractEnable, "Contract is disabled/cancelled");
+        require(bytes(friends[friendAddress].name).length == 0, "Friend's address already exists");
         Friend memory f;
         f.name = name;
         f.voted = false;
@@ -74,7 +82,9 @@ contract LunchVenue {
      * @return validVote Is the vote valid? A valid vote should be from a registered friend to a registered restaurant
      */
     function doVote(uint restaurant) public votingOpen returns (bool validVote) {
+        require(contractEnable, "Contract is disabled/cancelled");
         validVote = false; // is the vote valid?
+        require(!friends[msg.sender].voted, "Cannot vote multiple time in one user");
         if(bytes(friends[msg.sender].name).length != 0) { // does friend exist?
             if(bytes(restaurants[restaurant]).length != 0) { // does restaurant exist?
                 validVote = true;
@@ -92,7 +102,6 @@ contract LunchVenue {
         } 
         return validVote;
     }
-
     /**
      * @notice Determine winner resturant
      * @dev if top 2 restaurant have the same no of votes, result depends on vote order
@@ -118,13 +127,20 @@ contract LunchVenue {
     }
 
     /**
+     * @notice Determine whether the contact enable or not
+     * @dev if the contact disable, it should disable the addFriends, addRestaurant, and doVote functions
+     */
+    function disableContract() public restricted {
+        require(contractEnable, "Contract is disabled/cancelled.");
+        contractEnable = false;
+    }
+    /**
      * @notice Only the manager can do
      */
     modifier restricted() {
         require(msg.sender == manager, "Can only be executed by the manager");
         _;
     }
-    
     /**
      * @notice  Only when voting is still open
      */
