@@ -6,7 +6,6 @@ pragma solidity ^0.8.0;
 /// @author Dilum Bandara, CSIRO's Data61
 
 contract LunchVenue {
-    
     struct Friend {
         string name;
         bool voted; // Vote state
@@ -16,6 +15,7 @@ contract LunchVenue {
         address voterAddress;
         uint restaurant;
     }
+    enum VotingPhase {VoteCreate, VoteOpen, VoteClose} // weakness 3: vote process include well-defined create, vote open and vote close phase.
 
     mapping (uint => string) public restaurants; // list of restaurants (restaurant no, name)
     mapping (address => Friend) public friends; // list of friends (addresss, Friend)
@@ -27,16 +27,24 @@ contract LunchVenue {
     
     mapping (uint => Vote) public votes; // list of votes (vote no, Vote)
     mapping (uint => uint) private _results; // list of vote count (restaurant no, no of votes)
-    bool public voteOpen = true;
+    // bool public voteOpen = true;
     // new variables
-    mapping (string => bool) public restaurantExists; //  check the restaurants have added or not
-    bool public contractEnable = true; // Flag the contract current status (enable/disable)
+    mapping (string => bool) public restaurantExists; //  weakness 2: check the restaurants have added or not
+    VotingPhase public currentPhase = VotingPhase.VoteCreate; // weakness 3: determine the current phase
+    // weakness 4: timeout the lunch venue before lunchtime
+    uint public timeoutBlock = 100; 
+    uint public startBlock;
+    uint public endBlock;
+    bool public isContractTimeout = false;
+    bool public contractEnable = true; // weakness 5: flag the contract current status (enable/disable)
     
     /**
      * @dev Set manager when contract starts
      */
     constructor () {
         manager = msg.sender; // set contract creator as manager
+        startBlock = block.number;
+        endBlock = startBlock + timeoutBlock;
     }
 
     /**
@@ -46,9 +54,10 @@ contract LunchVenue {
      * @param name Restaurant name
      * @return Number of restaurant added so far
      */
-    function addRestaurant ( string memory name ) public restricted returns ( uint ){
+    function addRestaurant ( string memory name ) public restricted isCreatePhase returns ( uint ){
         require(contractEnable, "Contract is disabled/cancelled");
-        require(!restaurantExists[name], "Cannot add the same restaurant twice");
+        require(bytes(name).length > 0, "Restaurant name cannot be empty");
+        require(!restaurantExists[name], "Cannot add the same restaurant twice"); // weakness 2: cannot add the same restaurant twice
         numRestaurants++;
         restaurants[numRestaurants] = name;
         restaurantExists[name] = true;
@@ -63,9 +72,9 @@ contract LunchVenue {
      * @param name Friend's name
      * @return Number of friends added so far
      */
-    function addFriend(address friendAddress, string memory name) public restricted returns (uint) {
+    function addFriend(address friendAddress, string memory name) public restricted isCreatePhase returns (uint) {
         require(contractEnable, "Contract is disabled/cancelled");
-        require(bytes(friends[friendAddress].name).length == 0, "Friend's address already exists");
+        require(bytes(friends[friendAddress].name).length == 0, "Friend's address already exists"); // weakness 2: cannot add the same friends twice
         Friend memory f;
         f.name = name;
         f.voted = false;
@@ -74,6 +83,7 @@ contract LunchVenue {
         return numFriends;
     }
 
+    
     /**
      * @notice Vote for a restaurant
      * @dev To simplify the code duplicate votes by a friend is not check
@@ -81,10 +91,10 @@ contract LunchVenue {
      * @param restaurant Restaurant number being voted
      * @return validVote Is the vote valid? A valid vote should be from a registered friend to a registered restaurant
      */
-    function doVote(uint restaurant) public votingOpen returns (bool validVote) {
+    function doVote(uint restaurant) public isOpenPhase returns (bool validVote) {
         require(contractEnable, "Contract is disabled/cancelled");
+        require(!friends[msg.sender].voted, "Cannot vote multiple time in one user"); // weakness 1: a friend cannot vote more than once
         validVote = false; // is the vote valid?
-        require(!friends[msg.sender].voted, "Cannot vote multiple time in one user");
         if(bytes(friends[msg.sender].name).length != 0) { // does friend exist?
             if(bytes(restaurants[restaurant]).length != 0) { // does restaurant exist?
                 validVote = true;
@@ -99,7 +109,7 @@ contract LunchVenue {
 
         if (numVotes >= numFriends/2 + 1 ) { // Quorum is met
             finalResult();
-        } 
+        }
         return validVote;
     }
     /**
@@ -123,17 +133,68 @@ contract LunchVenue {
             }
         }
         votedRestaurant = restaurants[highestRestaurant]; // Chosen restaurant
-        voteOpen = false; // voting is now closed
+        currentPhase = VotingPhase.VoteClose;
+        // voteOpen = false; // voting is now closed
     }
 
     /**
-     * @notice Determine whether the contact enable or not
+     * @notice Weakness 3 : manager start voting
+     */
+    function startVoting() public restricted isCreatePhase{
+        require(numFriends > 0, "Cannot start without friends");
+        require(numRestaurants > 0, "Cannot start without restaurant");
+        // match all the condition, start voting
+        currentPhase = VotingPhase.VoteOpen;
+    }
+
+    /**
+     * @notice Weakness 3 : manager close voting
+     */
+    function closeVoting() public restricted isOpenPhase{
+        currentPhase = VotingPhase.VoteClose;
+    }
+
+    /**
+     * @notice Weakness 4 : contract timeout 
+     */
+    function contractTimeout() public returns (bool){
+        if(block.number >= endBlock) {
+            currentPhase = VotingPhase.VoteClose;
+            return isContractTimeout = true;
+        } 
+        return false;
+    }
+
+    function decideVenue() public {
+        if(isContractTimeout == true) {
+            finalResult();
+        } 
+    }
+    /**
+     * @notice Weakness 5: Determine whether the contact enable or not
      * @dev if the contact disable, it should disable the addFriends, addRestaurant, and doVote functions
      */
     function disableContract() public restricted {
         require(contractEnable, "Contract is disabled/cancelled.");
         contractEnable = false;
     }
+
+    /**
+     * @notice Weakness 3: Only can run during vote create phase
+     */
+    modifier isCreatePhase() {
+        require(currentPhase == VotingPhase.VoteCreate, "Can only be run in create phase");
+        _;
+    }
+
+    /**
+     * @notice Weakness 3: Only can run during vote open phase
+     */
+    modifier isOpenPhase() {
+        require(currentPhase == VotingPhase.VoteOpen, "Can vote only while voting is open");
+        _;
+    }
+
     /**
      * @notice Only the manager can do
      */
@@ -144,8 +205,8 @@ contract LunchVenue {
     /**
      * @notice  Only when voting is still open
      */
-     modifier votingOpen() {
-        require(voteOpen == true, "Can vote only while voting is open.");
-        _;
-     }
+    // modifier votingOpen() {
+    // require(voteOpen == true, "Can vote only while voting is open.");
+    // _;
+    // }
 }
