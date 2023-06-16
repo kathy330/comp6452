@@ -74,7 +74,7 @@ contract LunchVenue {
      */
     function addFriend(address friendAddress, string memory name) public restricted isCreatePhase returns (uint) {
         require(contractEnable, "Contract is disabled/cancelled");
-        require(bytes(friends[friendAddress].name).length == 0, "Friend's address already exists"); // weakness 2: cannot add the same friends twice
+        require(bytes(friends[friendAddress].name).length == 0, "Friend address already exists"); // weakness 2: cannot add the same friends twice
         Friend memory f;
         f.name = name;
         f.voted = false;
@@ -94,6 +94,7 @@ contract LunchVenue {
     function doVote(uint restaurant) public isOpenPhase returns (bool validVote) {
         require(contractEnable, "Contract is disabled/cancelled");
         require(!friends[msg.sender].voted, "Cannot vote multiple time in one user"); // weakness 1: a friend cannot vote more than once
+        require(contractTimeout() == false, "Contract timeout"); // weakness 4: if contract timeout cannot vote.
         validVote = false; // is the vote valid?
         if(bytes(friends[msg.sender].name).length != 0) { // does friend exist?
             if(bytes(restaurants[restaurant]).length != 0) { // does restaurant exist?
@@ -160,7 +161,8 @@ contract LunchVenue {
     function contractTimeout() public returns (bool){
         if(block.number >= endBlock) {
             currentPhase = VotingPhase.VoteClose;
-            return isContractTimeout = true;
+            isContractTimeout = true;
+            return true;
         } 
         return false;
     }
@@ -170,13 +172,20 @@ contract LunchVenue {
             finalResult();
         } 
     }
+    
     /**
      * @notice Weakness 5: Determine whether the contact enable or not
      * @dev if the contact disable, it should disable the addFriends, addRestaurant, and doVote functions
      */
-    function disableContract() public restricted {
+    function disableContract() public restricted returns (bool){
         require(contractEnable, "Contract is disabled/cancelled.");
         contractEnable = false;
+        return true;
+    }
+
+    function enableContract() public restricted returns (bool){
+        contractEnable = true;
+        return true;
     }
 
     /**
