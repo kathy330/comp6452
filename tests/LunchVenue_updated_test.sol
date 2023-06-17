@@ -13,7 +13,7 @@ import "../LunchVenue_updated.sol";
 
 // File name has to end with '_test.sol', this file can contain more than one testSuite contracts
 // Inherit 'LunchVenue' contract
-contract LunchVenueTest is LunchVenue {
+contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumber to deply the contract
     // Variable used to emulate different accounts
     address acc0;
     address acc1;
@@ -308,11 +308,11 @@ contract LunchVenueTest is LunchVenue {
     function voteFailure() public {
         Assert.equal(doVote(1), false, "Voting result should be false");
     }
-
+    
     /// weakness 4: contract cannot vote when it's timeout
     function contractTimeoutVoteFailure() public {
         uint orginEndBlock = endBlock;
-        endBlock = block.number; // set the contract timeout block as the current time.
+        endBlock = block.number - 1; // set the contract end block numnber timeout.
         try this.doVote(2) returns (bool validVote) { // even manager cannot vote for the restaurant
             Assert.equal(validVote, true, "Method execution did not fail");
         } catch Error(string memory reason) {
@@ -330,6 +330,15 @@ contract LunchVenueTest is LunchVenue {
         ) {
             Assert.ok(false, "Failed unexpectedly");
         }
+        // once the contract timeout show the result
+        decideVenue(); // run the finalResult() after timeout
+        Assert.equal(
+            votedRestaurant,
+            "Countyard Cafe",
+            "Selected restaurant should be Uni Cafe"
+        );
+        // after run the finalResult() the voting will set to close, so it need to reset the voteing phase to open
+        currentPhase = VotingPhase.VoteOpen;
         // reset back to the original endblock
         endBlock = orginEndBlock;
         // using the contractTimeout() function to check is the contract running as expected

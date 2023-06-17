@@ -32,19 +32,17 @@ contract LunchVenue {
     mapping (string => bool) public restaurantExists; //  weakness 2: check the restaurants have added or not
     VotingPhase public currentPhase = VotingPhase.VoteCreate; // weakness 3: determine the current phase
     // weakness 4: timeout the lunch venue before lunchtime
-    uint public timeoutBlock = 100; 
     uint public startBlock;
     uint public endBlock;
-    bool public isContractTimeout = false;
     bool public contractEnable = true; // weakness 5: flag the contract current status (enable/disable)
-    
     /**
      * @dev Set manager when contract starts
+     * @param initialTimeoutBlock The initial value for timeoutBlock
      */
-    constructor () {
+    constructor (uint initialTimeoutBlock) {
         manager = msg.sender; // set contract creator as manager
         startBlock = block.number;
-        endBlock = startBlock + timeoutBlock;
+        endBlock = startBlock + initialTimeoutBlock;
     }
 
     /**
@@ -94,7 +92,7 @@ contract LunchVenue {
     function doVote(uint restaurant) public isOpenPhase returns (bool validVote) {
         require(contractEnable, "Contract is disabled/cancelled");
         require(!friends[msg.sender].voted, "Cannot vote multiple time in one user"); // weakness 1: a friend cannot vote more than once
-        require(contractTimeout() == false, "Contract timeout"); // weakness 4: if contract timeout cannot vote.
+        require(!contractTimeout(), "Contract timeout"); // weakness 4: if contract timeout cannot vote.
         validVote = false; // is the vote valid?
         if(bytes(friends[msg.sender].name).length != 0) { // does friend exist?
             if(bytes(restaurants[restaurant]).length != 0) { // does restaurant exist?
@@ -159,20 +157,27 @@ contract LunchVenue {
      * @notice Weakness 4 : contract timeout 
      */
     function contractTimeout() public returns (bool){
-        if(block.number >= endBlock) {
+        if(block.number > endBlock) {
             currentPhase = VotingPhase.VoteClose;
-            isContractTimeout = true;
             return true;
         } 
         return false;
     }
-
-    function decideVenue() public {
-        if(isContractTimeout == true) {
-            finalResult();
-        } 
-    }
     
+    /**
+     * @notice Weakness 4 : show the deciede venue, if timeout or the voting phase is close.
+     */
+    function decideVenue() public returns (string memory){
+        if (currentPhase == VotingPhase.VoteClose) {
+            return votedRestaurant;
+        } 
+        if(block.number < endBlock) {
+            revert("Contract is not timeout yet, decision not available.");
+        }
+        finalResult();
+        return votedRestaurant;
+    }
+
     /**
      * @notice Weakness 5: Determine whether the contact enable or not
      * @dev if the contact disable, it should disable the addFriends, addRestaurant, and doVote functions
