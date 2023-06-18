@@ -14,7 +14,7 @@ import "../LunchVenue_updated.sol";
 // File name has to end with '_test.sol', this file can contain more than one testSuite contracts
 // Inherit 'LunchVenue' contract
 contract LunchVenueTest is
-    LunchVenue(uint256(100)) // pass a fixed blocknumber to deply the contract
+    LunchVenue() // pass a fixed blocknumber to deply the contract
 {
     // Variable used to emulate different accounts
     address acc0;
@@ -120,7 +120,6 @@ contract LunchVenueTest is
         (bool success, bytes memory data) = address(this).delegatecall(
             abi.encodeWithSignature("addFriend(address,string)", acc3, "Eve")
         );
-
         if (!success) {
             string memory reason = resErrorMsg(data);
             Assert.equal(
@@ -170,7 +169,7 @@ contract LunchVenueTest is
     /// Weakness 3: Start Voting
     /// #sender: account-0 (manager)
     function votingStart() public {
-        startVoting();
+        startVoting(uint256(100));
     }
 
     /// Weakness 3: cannot modify firends in the vote open pahse
@@ -287,6 +286,12 @@ contract LunchVenueTest is
     /// #sender: account-7
     function voteFailure() public {
         Assert.equal(doVote(1), false, "Voting result should be false");
+    }
+
+    /// Try voting a restaurant not in the restaurant list. This should fail
+    /// #sender: account-3
+    function voteNotExistRestaurantFailure() public {
+        Assert.equal(doVote(7), false, "Voting result should be false");
     }
 
     /// weakness 4: contract cannot vote when it's timeout

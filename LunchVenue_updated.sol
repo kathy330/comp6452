@@ -33,16 +33,16 @@ contract LunchVenue {
     VotingPhase public currentPhase = VotingPhase.VoteCreate; // weakness 3: determine the current phase
     uint public startBlock; // weakness 4: initial starting time block number
     uint public endBlock; // weakness 4: final ending time block number
+    uint public currentTimeBlock; // weakness 4: to check the current time block number in the deploy pannel
+    bool public isContractStartTimeout = false;
     bool public contractEnable = true; // weakness 5: flag the contract current status (enable/disable)
-
+    
     /**
      * @dev Set manager when contract starts
-     * @param initialTimeoutBlock The initial value for timeoutBlock
      */
-    constructor (uint initialTimeoutBlock) {
+    constructor () {
         manager = msg.sender; // set contract creator as manager
         startBlock = block.number; // set the start time block number as the current block number
-        endBlock = startBlock + initialTimeoutBlock; // add the timeout block number by the deployer
     }
 
     /**
@@ -91,8 +91,8 @@ contract LunchVenue {
      */
     function doVote(uint restaurant) public isOpenPhase returns (bool validVote) {
         require(contractEnable, "Contract is disabled/cancelled"); // weakness 5: check contract enable or not
-        require(!friends[msg.sender].voted, "Cannot vote multiple time in one user"); // weakness 1: a friend cannot vote more than once
         require(!contractTimeout(), "Contract timeout"); // weakness 4: if contract timeout cannot vote.
+        require(!friends[msg.sender].voted, "Cannot vote multiple time in one user"); // weakness 1: a friend cannot vote more than once
         validVote = false; // is the vote valid?
         if(bytes(friends[msg.sender].name).length != 0) { // does friend exist?
             if(bytes(restaurants[restaurant]).length != 0) { // does restaurant exist?
@@ -137,21 +137,29 @@ contract LunchVenue {
     }
 
     /**
-     * @notice Weakness 3 : manager start voting phase
+     * @notice Weakness 3: manager start voting phase
+               Weakness 4: manager can set whent the contract is timeout by inputing the block number & 
+                           contract start timeout in the vote open phase
      */
-    function startVoting() public restricted isCreatePhase{
+    function startVoting(uint timeoutBlockNumber) public restricted isCreatePhase{
         require(numFriends > 0, "Cannot start without friends"); // ensure there has more than 1 firends
         require(numRestaurants > 0, "Cannot start without restaurant"); // ensure there has more than 1 restaurant
         // match all the condition, start voting
         currentPhase = VotingPhase.VoteOpen;
+        currentTimeBlock = block.number;
+        endBlock = currentTimeBlock + timeoutBlockNumber;
+        isContractStartTimeout = true;
     }
 
     /**
      * @notice Weakness 4 : check contract whether timeout or not
      */
     function contractTimeout() public returns (bool){
-        if(block.number > endBlock) {
-            currentPhase = VotingPhase.VoteClose; // if contract timeout change the voting phase to close
+        currentTimeBlock = block.number;
+        if(!isContractStartTimeout){
+            return false;
+        }
+        if(currentTimeBlock > endBlock) {
             return true;
         } 
         return false;
@@ -166,7 +174,11 @@ contract LunchVenue {
             return votedRestaurant;
         } 
         // if the contract hasn't timeout return error msg
-        if(block.number < endBlock) {
+        currentTimeBlock = block.number;
+        if (currentPhase == VotingPhase.VoteCreate) {
+            revert("Contract in the vote create phase, decision not available.");
+        } 
+        if(currentTimeBlock < endBlock) {
             revert("Contract is not timeout yet, decision not available.");
         }
         // if timeout show result
