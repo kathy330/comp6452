@@ -28,21 +28,21 @@ contract LunchVenue {
     mapping (uint => Vote) public votes; // list of votes (vote no, Vote)
     mapping (uint => uint) private _results; // list of vote count (restaurant no, no of votes)
     // bool public voteOpen = true;
-    // new variables
+    // additional variables for weaknesses
     mapping (string => bool) public restaurantExists; //  weakness 2: check the restaurants have added or not
     VotingPhase public currentPhase = VotingPhase.VoteCreate; // weakness 3: determine the current phase
-    // weakness 4: timeout the lunch venue before lunchtime
-    uint public startBlock;
-    uint public endBlock;
+    uint public startBlock; // weakness 4: initial starting time block number
+    uint public endBlock; // weakness 4: final ending time block number
     bool public contractEnable = true; // weakness 5: flag the contract current status (enable/disable)
+
     /**
      * @dev Set manager when contract starts
      * @param initialTimeoutBlock The initial value for timeoutBlock
      */
     constructor (uint initialTimeoutBlock) {
         manager = msg.sender; // set contract creator as manager
-        startBlock = block.number;
-        endBlock = startBlock + initialTimeoutBlock;
+        startBlock = block.number; // set the start time block number as the current block number
+        endBlock = startBlock + initialTimeoutBlock; // add the timeout block number by the deployer
     }
 
     /**
@@ -53,8 +53,8 @@ contract LunchVenue {
      * @return Number of restaurant added so far
      */
     function addRestaurant ( string memory name ) public restricted isCreatePhase returns ( uint ){
-        require(contractEnable, "Contract is disabled/cancelled");
-        require(bytes(name).length > 0, "Restaurant name cannot be empty");
+        require(contractEnable, "Contract is disabled/cancelled"); // weakness 5: check contract enable or not
+        require(bytes(name).length > 0, "Restaurant name cannot be empty"); // not all empty restaurant name
         require(!restaurantExists[name], "Cannot add the same restaurant twice"); // weakness 2: cannot add the same restaurant twice
         numRestaurants++;
         restaurants[numRestaurants] = name;
@@ -71,7 +71,7 @@ contract LunchVenue {
      * @return Number of friends added so far
      */
     function addFriend(address friendAddress, string memory name) public restricted isCreatePhase returns (uint) {
-        require(contractEnable, "Contract is disabled/cancelled");
+        require(contractEnable, "Contract is disabled/cancelled"); // weakness 5: check contract enable or not
         require(bytes(friends[friendAddress].name).length == 0, "Friend address already exists"); // weakness 2: cannot add the same friends twice
         Friend memory f;
         f.name = name;
@@ -90,7 +90,7 @@ contract LunchVenue {
      * @return validVote Is the vote valid? A valid vote should be from a registered friend to a registered restaurant
      */
     function doVote(uint restaurant) public isOpenPhase returns (bool validVote) {
-        require(contractEnable, "Contract is disabled/cancelled");
+        require(contractEnable, "Contract is disabled/cancelled"); // weakness 5: check contract enable or not
         require(!friends[msg.sender].voted, "Cannot vote multiple time in one user"); // weakness 1: a friend cannot vote more than once
         require(!contractTimeout(), "Contract timeout"); // weakness 4: if contract timeout cannot vote.
         validVote = false; // is the vote valid?
@@ -132,33 +132,26 @@ contract LunchVenue {
             }
         }
         votedRestaurant = restaurants[highestRestaurant]; // Chosen restaurant
-        currentPhase = VotingPhase.VoteClose;
+        currentPhase = VotingPhase.VoteClose; // change the voting phase to closed
         // voteOpen = false; // voting is now closed
     }
 
     /**
-     * @notice Weakness 3 : manager start voting
+     * @notice Weakness 3 : manager start voting phase
      */
     function startVoting() public restricted isCreatePhase{
-        require(numFriends > 0, "Cannot start without friends");
-        require(numRestaurants > 0, "Cannot start without restaurant");
+        require(numFriends > 0, "Cannot start without friends"); // ensure there has more than 1 firends
+        require(numRestaurants > 0, "Cannot start without restaurant"); // ensure there has more than 1 restaurant
         // match all the condition, start voting
         currentPhase = VotingPhase.VoteOpen;
     }
 
     /**
-     * @notice Weakness 3 : manager close voting
-     */
-    function closeVoting() public restricted isOpenPhase{
-        currentPhase = VotingPhase.VoteClose;
-    }
-
-    /**
-     * @notice Weakness 4 : contract timeout 
+     * @notice Weakness 4 : check contract whether timeout or not
      */
     function contractTimeout() public returns (bool){
         if(block.number > endBlock) {
-            currentPhase = VotingPhase.VoteClose;
+            currentPhase = VotingPhase.VoteClose; // if contract timeout change the voting phase to close
             return true;
         } 
         return false;
@@ -168,12 +161,15 @@ contract LunchVenue {
      * @notice Weakness 4 : show the deciede venue, if timeout or the voting phase is close.
      */
     function decideVenue() public returns (string memory){
+        // if the voting has close, show result
         if (currentPhase == VotingPhase.VoteClose) {
             return votedRestaurant;
         } 
+        // if the contract hasn't timeout return error msg
         if(block.number < endBlock) {
             revert("Contract is not timeout yet, decision not available.");
         }
+        // if timeout show result
         finalResult();
         return votedRestaurant;
     }

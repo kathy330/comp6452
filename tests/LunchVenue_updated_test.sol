@@ -13,7 +13,9 @@ import "../LunchVenue_updated.sol";
 
 // File name has to end with '_test.sol', this file can contain more than one testSuite contracts
 // Inherit 'LunchVenue' contract
-contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumber to deply the contract
+contract LunchVenueTest is
+    LunchVenue(uint256(100)) // pass a fixed blocknumber to deply the contract
+{
     // Variable used to emulate different accounts
     address acc0;
     address acc1;
@@ -64,14 +66,10 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
                 "Can only be executed by the manager",
                 "Failed with unexpected reason"
             );
-        } catch Panic(
-            uint256 /* errorCode*/
-        ) {
+        } catch Panic(uint256 /* errorCode*/) {
             // In case of a panic
             Assert.ok(false, "Failed unexpected with error code");
-        } catch (
-            bytes memory /*lowLevelData*/
-        ) {
+        } catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, "Failed. unexpected");
         }
     }
@@ -97,21 +95,19 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
                 "Can only be executed by the manager",
                 "Failed with unexpected reason"
             );
-        } catch Panic(
-            uint256 /*errorCode*/
-        ) {
+        } catch Panic(uint256 /*errorCode*/) {
             // In case of a panic
             Assert.ok(false, "Failed unexpected with error code");
-        } catch (
-            bytes memory /*lowLevelData*/
-        ) {
+        } catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, "Failed unexpected");
         }
     }
 
     /// * Delegate call catch and return error message
-    function resErrorMsg(bytes memory result) internal pure returns (string memory) {
-        if (result.length < 68) return "Transaction returned silently";
+    function resErrorMsg(
+        bytes memory result
+    ) internal pure returns (string memory) {
+        if (result.length < 68) return "Not return error msg";
         assembly {
             result := add(result, 0x04)
         }
@@ -157,21 +153,16 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
     function voteBeforeStartFailure() public {
         try this.doVote(1) returns (bool validVote) {
             Assert.equal(validVote, true, "Method execution did not fail");
-            // Assert.equal(validVote, "Can vote only while voting is open", "Voting should faled because not in the start phase");
         } catch Error(string memory reason) {
             Assert.equal(
                 reason,
                 "Can vote only while voting is open",
                 "Failed with unexpected reason"
             );
-        } catch Panic(
-            uint256 /* errorCode */
-        ) {
+        } catch Panic(uint256 /* errorCode */) {
             // In case of a panic
             Assert.ok(false, "Failed unexpected with error code");
-        } catch (
-            bytes memory /*lowLevelData*/
-        ) {
+        } catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, "Failed unexpectedly");
         }
     }
@@ -234,13 +225,9 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
                 "Cannot vote multiple time in one user",
                 "Unexpected failure reason"
             );
-        } catch Panic(
-            uint256 /* errorCode */
-        ) {
+        } catch Panic(uint256 /* errorCode */) {
             Assert.ok(false, "Failed unexpectedly with error code");
-        } catch (
-            bytes memory /*lowLevelData*/
-        ) {
+        } catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, "Failed unexpectedly");
         }
     }
@@ -260,14 +247,10 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
                 "Can only be executed by the manager",
                 "Failed with unexpected reason"
             );
-        } catch Panic(
-            uint256 /* errorCode*/
-        ) {
+        } catch Panic(uint256 /* errorCode*/) {
             // In case of a panic
             Assert.ok(false, "Failed unexpected with error code");
-        } catch (
-            bytes memory /*lowLevelData*/
-        ) {
+        } catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, "Failed. unexpected");
         }
     }
@@ -277,7 +260,8 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
     /// #sender: account-0
     function contactDisableVoteFailure() public {
         Assert.ok(disableContract() == true, "disable contract successs"); // manager cancel/disable the contract
-        try this.doVote(2) returns (bool validVote) { // even manager cannot vote for the restaurant
+        try this.doVote(2) returns (bool validVote) {
+            // even manager cannot vote for the restaurant
             Assert.equal(validVote, true, "Method execution did not fail");
         } catch Error(string memory reason) {
             Assert.equal(
@@ -285,13 +269,9 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
                 "Contract is disabled/cancelled",
                 "Unexpected failure reason"
             );
-        } catch Panic(
-            uint256 /* errorCode */
-        ) {
+        } catch Panic(uint256 /* errorCode */) {
             Assert.ok(false, "Failed unexpectedly with error code");
-        } catch (
-            bytes memory /*lowLevelData*/
-        ) {
+        } catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, "Failed unexpectedly");
         }
         Assert.ok(enableContract() == true, "disable contract successs"); // ensure the following test code can run.
@@ -308,12 +288,13 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
     function voteFailure() public {
         Assert.equal(doVote(1), false, "Voting result should be false");
     }
-    
+
     /// weakness 4: contract cannot vote when it's timeout
     function contractTimeoutVoteFailure() public {
-        uint orginEndBlock = endBlock;
+        uint256 orginEndBlock = endBlock;
         endBlock = block.number - 1; // set the contract end block numnber timeout.
-        try this.doVote(2) returns (bool validVote) { // even manager cannot vote for the restaurant
+        try this.doVote(2) returns (bool validVote) {
+            // even manager cannot vote for the restaurant
             Assert.equal(validVote, true, "Method execution did not fail");
         } catch Error(string memory reason) {
             Assert.equal(
@@ -321,13 +302,9 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
                 "Contract timeout",
                 "Unexpected failure reason"
             );
-        } catch Panic(
-            uint256 /* errorCode */
-        ) {
+        } catch Panic(uint256 /* errorCode */) {
             Assert.ok(false, "Failed unexpectedly with error code");
-        } catch (
-            bytes memory /*lowLevelData*/
-        ) {
+        } catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, "Failed unexpectedly");
         }
         // once the contract timeout show the result
@@ -379,14 +356,10 @@ contract LunchVenueTest is LunchVenue(uint256(100)) { // pass a fixed blocknumbe
                 "Can vote only while voting is open",
                 "Failed with unexpected reason"
             );
-        } catch Panic(
-            uint256 /* errorCode */
-        ) {
+        } catch Panic(uint256 /* errorCode */) {
             // In case of a panic
             Assert.ok(false, "Failed unexpected with error code");
-        } catch (
-            bytes memory /*lowLevelData*/
-        ) {
+        } catch (bytes memory /*lowLevelData*/) {
             Assert.ok(false, "Failed unexpectedly");
         }
     }
