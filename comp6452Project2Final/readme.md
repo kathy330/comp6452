@@ -3,25 +3,24 @@
 ## install environment
 
 - install node.js & npm
-- install truffle `npm install -g truffle`
-- install ganache
-- install web3.py library `pip install web3`
+- install truffle 
+- install ganache [CLI](https://www.npmjs.com/package/ganache)/[GUI](https://trufflesuite.com/ganache/)
 - install required python library
 
 ## Ganache
 
-run ganache `ganache-cli`, keep ganache on the background
+run ganache `ganache`, keep ganache on the background
 
 ## Comply and deploy sc
 
-1. in your project folder run `truffle init`, don't overwrite the existing files
+1. In this project folder run `truffle init`, don't overwrite the existing files
 2. Deploy your contract：`truffle migrate`
-3. After run `truffle migrate` use the delegate contract address and update the address to `\servers\.env` file
-4. After you installed all the required python library, run code `python3 databaseBlockchainAPI.py` to open the database
+3. After running `truffle migrate` use the delegate contract address and update the address to the `\servers\.env` file
+4. After you installed all the required Python library, run code `python3 databaseBlockchainAPI.py` to open the database
 
 ## User APIs
 
-### 1. Create an user
+### 1. Create a user
 
 - **URL:** `http://localhost:5000/users/`
 - **Method** `POST`
@@ -37,14 +36,14 @@ run ganache `ganache-cli`, keep ganache on the background
 }
 ```
 
-### 2. Query an user
+### 2. Query a user
 
 - **URL:** `http://localhost:5000/users/<userID>`
 - **Method** `GET`
 - **Note**: Use the returned userID from the returned result in "Create an user" API.
 
 
-### 3. Update an user
+### 3. Update a user
 
 - **URL:** `http://localhost:5000/users/<userID>`
 - **Method** `PUT`
@@ -60,7 +59,7 @@ run ganache `ganache-cli`, keep ganache on the background
 }
 ```
 
-### 4. Delete an user
+### 4. Delete a user
 
 - **URL:** `http://localhost:5000/users/<userID>`
 - **Method** `DELETE`
